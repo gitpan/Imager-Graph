@@ -35,7 +35,7 @@ use strict;
 use vars qw($VERSION);
 use Imager qw(:handy);
 
-$VERSION = '0.02';
+$VERSION = '0.03';
 
 my $fancy_fills = 0;
 my ($im_version) = ($Imager::VERSION =~ /(\d\.[\d_]+)/);

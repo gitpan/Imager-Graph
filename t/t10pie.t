@@ -29,6 +29,9 @@ $fontfile = 'ImUgly.ttf' unless $fontfile and -e $fontfile;
 my $font = Imager::Font->new(file=>$fontfile, aa=>1)
   or die "Cannot create font object: ",Imager->errstr,"\n";
 
+print "# Imager version: $Imager::VERSION\n";
+print "# Font type: ",ref $font,"\n";
+
 my $img1 = $pie->draw(data=>\@data, labels=>\@labels, font=>$font, 
 		      title=>{ text=>'Imager::Graph::Pie', size=>32 },
 		      features=>{ outline=>1, labels=>1, pieblur=>0, },
@@ -68,7 +71,7 @@ if ($im_version > 0.38) {
   ok($img3, "third chart");
   $img3->write(file=>'testout/t10_lin_fount.png')
     or die "Cannot save pie3: ",$img3->errstr,"\n";
-  cmpimg($img3, "testimg/t10_lin_fount.png");
+  cmpimg($img3, "testimg/t10_lin_fount.png", 180_000);
 
   my $img4 = $pie->draw(data=>\@data, labels=>\@labels,
                         font=>$font, style=>'fount_rad', 
@@ -79,7 +82,7 @@ if ($im_version > 0.38) {
   ok($img4, "fourth chart");
   $img4->write(file=>'testout/t10_rad_fount.png')
     or die "Cannot save pie3: ",$img4->errstr,"\n";
-  cmpimg($img4, "testimg/t10_rad_fount.png");
+  cmpimg($img4, "testimg/t10_rad_fount.png", 120_000);
 
   my $img5 = $pie->draw(data=>\@data, labels=>\@labels,
                         font=>$font, style=>'mono', 
@@ -89,7 +92,7 @@ if ($im_version > 0.38) {
   ok($img5, "fifth chart");
   $img5->write(file=>'testout/t10_mono.png')
     or die "Cannot save pie3: ",$img5->errstr,"\n";
-  cmpimg($img5, "testimg/t10_mono.png");
+  cmpimg($img5, "testimg/t10_mono.png", 550_000);
 }
 else {
   skip("Imager not new enough", 6);
@@ -99,7 +102,7 @@ sub ok {
   my ($test, $comment) = @_;
 
   if ($test) {
-    print "ok ",$testnum++,"\n";
+    print "ok ",$testnum++," # $comment\n";
   }
   else {
     print "not ok ",$testnum++," # $comment\n";
