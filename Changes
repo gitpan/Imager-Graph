@@ -1,0 +1,5 @@
+Revision history for Perl extension Graph::Imager.
+
+0.01  Tue Sep 12 23:03:25 2000
+	- original version; created by h2xs 1.19
+        - can draw some nice pie graphs
