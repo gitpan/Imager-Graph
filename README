@@ -44,6 +44,12 @@ Imager::Graph follows the normal perl module installation process:
    make test
    make install
 
+Please Note: don't be too suprised if you get test failures,
+unfortunately minor changes in the image can result in large changes
+in the measure I use to check the results.  If you get test failures
+please check the results in testout/
+
+The tests require PNG file format and TrueType font format support.
 
 Creating Graphs
 ===============

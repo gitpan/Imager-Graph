@@ -35,12 +35,11 @@ use strict;
 use vars qw($VERSION);
 use Imager qw(:handy);
 
-$VERSION = '0.01';
+$VERSION = '0.02';
 
 my $fancy_fills = 0;
 my ($im_version) = ($Imager::VERSION =~ /(\d\.[\d_]+)/);
 if ($im_version > 0.38) {
-  print $im_version,"\n";
   ++$fancy_fills;
   require 'Imager/Fountain.pm';
 }
@@ -493,6 +492,13 @@ segments of a pie chart.
 the line color of the outlines, inherited from I<line>.
 
 =back
+
+=item fills
+
+a reference to an array containing fills for each data item.
+
+You can mix fill types, ie. using a simple color for the first item, a
+hatched fill for the second and a fountain fill for the next.
 
 =back
 
