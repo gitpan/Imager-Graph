@@ -1,4 +1,5 @@
 package Imager::Graph;
+require 5.005;
 
 =head1 NAME
 
@@ -34,15 +35,9 @@ and image fills, and masked images.
 use strict;
 use vars qw($VERSION);
 use Imager qw(:handy);
+use Imager::Fountain;
 
-$VERSION = '0.03';
-
-my $fancy_fills = 0;
-my ($im_version) = ($Imager::VERSION =~ /(\d\.[\d_]+)/);
-if ($im_version > 0.38) {
-  ++$fancy_fills;
-  require 'Imager/Fountain.pm';
-}
+$VERSION = '0.04';
 
 # the maximum recursion depth in determining a color, fill or number
 use constant MAX_DEPTH => 10;
@@ -730,10 +725,7 @@ my %styles =
            blur=>undef,
           },
    },
-  );
-
-if ($fancy_fills) {
-  $styles{fount_lin} =
+   fount_lin =>
    {
     fills=>
     [
@@ -778,9 +770,9 @@ if ($fancy_fills) {
     fg=>'000000',
     bg=>'FFFFFF',
     features=>{ dropshadow=>1 },
-   };
-   $styles{fount_rad} =
-     {
+   },
+   fount_rad =>
+   {
     fills=>
     [
      { fountain=>'radial',
@@ -822,8 +814,8 @@ if ($fancy_fills) {
               colors=>[ NC('6060FF'), NC('60FF60') ]) },
     fg=>'000000',
     bg=>'FFFFFF',
-   };
-}
+   }
+  );
 
 =item $self->_style_setup(\%opts)
 
@@ -949,6 +941,7 @@ in the style and the product is returned.
 =back
 
 =cut
+
 sub _get_number {
   my ($self, $name, @depth) = @_;
 
@@ -1452,6 +1445,10 @@ Imager::Graph::Pie(3), Imager(3), perl(1).
 =head1 AUTHOR
 
 Tony Cook <tony@develop-help.com>
+
+=head1 LICENSE
+
+Imager::Graph is licensed under the same terms as perl itself.
 
 =head1 BLAME
 
