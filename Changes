@@ -1,5 +1,15 @@
 Revision history for Perl extension Imager::Graph.
 
+Imager-Graph 0.05 - 17 December 2007
+=================
+
+This release is an attempt to work around the inconsistent text output
+issues.
+
+ - created Imager::Font::Test which simply outputs boxes instead of
+   text to produce consistent graph images for comparison.
+
+
 Imager-Graph 0.04 - 11 December 2007
 =================
 
