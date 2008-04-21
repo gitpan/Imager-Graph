@@ -87,6 +87,59 @@ the pie is given a drop shadow.
 
 =back
 
+=head1 PIE CHART STYLES
+
+The following style values are specific to pie charts:
+
+Controlling callouts, the C<callout> option:
+
+=over
+
+=item *
+
+color - the color of the callout line and the callout text.
+
+=item *
+
+font, size - font and size of the callout text
+
+=item *
+
+outside - the distance the radial callout line goes outside the pie
+
+=item *
+
+leadlen - the length of the horizontal callout line from the end of
+the radial line.
+
+=item *
+
+gap - the distance between the end of the horizontal callout line and
+the label.
+
+=item *
+
+inside - the length of the radial callout line within the pie.
+
+=back
+
+The outline, line option controls the color of the pie segment
+outlines, if enabled with the C<outline> feature.
+
+Under C<pie>:
+
+=over
+
+=item *
+
+maxsegment - any segment below this fraction of the total of the
+segments will be put into the "others" segment.  Default: 0.01
+
+=back
+
+The top level C<otherlabel> setting controls the label for the
+"others" segment, default "(others)".
+
 =head1 EXAMPLES
 
 Assuming:
@@ -252,7 +305,7 @@ sub draw {
     int($self->_small_extent(\@chart_box) * $style->{pie}{size} * 0.5);
   my $max_width = $chart_box[2] - $chart_box[0] + $ebox[0] - $ebox[2];
   if ($radius > $max_width / 2) {
-    $radius = $max_width / 2;
+    $radius = int($max_width / 2);
   }
   $chart_box[0] -= $ebox[0];
   $chart_box[2] -= $ebox[2];
@@ -278,6 +331,8 @@ sub draw {
 
   my @fill_box = ( $cx-$radius, $cy-$radius, $cx+$radius, $cy+$radius );
   for my $item (@info) {
+    $item->{begin} < $item->{end}
+      or next;
     my @fill = $self->_data_fill($item->{index}, \@fill_box)
       or return;
     $img->arc(x=>$cx, 'y'=>$cy, r=>$radius, aa => 1,
@@ -289,6 +344,8 @@ sub draw {
     for my $item (@info) {
       my $px = int($cx + $radius * cos($item->{begin}));
       my $py = int($cy + $radius * sin($item->{begin}));
+      $item->{begin} < $item->{end}
+	or next;
       $img->line(x1=>$cx, y1=>$cy, x2=>$px, y2=>$py, color=>$outcolor);
       for (my $i = $item->{begin}; $i < $item->{end}; $i += PI/180) {
 	my $stroke_end = $i + PI/180;
@@ -477,16 +534,11 @@ sub _style_defs {
 
   my %work = %{$self->SUPER::_style_defs()};
   $work{otherlabel} = "(others)";
-  $work{features}{pieblur} = 1;
   $work{pie} = 
     {
-     blur => { 
-              type=>'conv',
-              coef=>[0.05, 0.1, 0.3, 1, 0.3, 0.1, 0.05]
-             },
      guessfactor=>0.6,
      size=>0.8,
-     maxsegment=> 0.05,
+     maxsegment=> 0.01,
     };
 
   \%work;

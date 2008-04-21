@@ -1,5 +1,35 @@
 Revision history for Perl extension Imager::Graph.
 
+Imager-Graph 0.06 - 21 April 2008
+=================
+
+ - Removed ancient Imager cruft from the documentation
+
+ - round the dimensions used within the legend to integers to prevent
+   later truncation from causing uneven output.
+
+ - add horizontal legend boxes
+
+ - add a new style "primary" which is primary_red with a light grey
+   background, and made that the default, so the default graphs aren't
+   quite so ugly.
+
+ - zero-sized segments were drawn as covering the whole pie.  Skip
+   drawing zero sized segments.
+   https://rt.cpan.org/Ticket/Display.html?id=34813
+
+ - round the pie radius down to avoid running over the edge of the
+   image
+
+ - changed the pie maxsegments default to 0.01 from 0.05
+
+ - removed the obsolete pie blur style information
+
+ - documented some of the pie chart specific style settings
+
+ - changed the default drop shadow style to a translucent fill so the
+   background can show through.
+
 Imager-Graph 0.05 - 17 December 2007
 =================
 
