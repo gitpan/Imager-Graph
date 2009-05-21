@@ -1,23 +1,34 @@
-Changes         A list of changes :)
+Changes				A list of changes :)
 Graph.pm
-ImUgly.ttf      A moderately ugly font
+ImUgly.ttf			A moderately ugly font
+lib/Imager/Graph/Bar.pm
+lib/Imager/Graph/Column.pm
+lib/Imager/Graph/Horizontal.pm
+lib/Imager/Graph/Line.pm
+lib/Imager/Graph/Pie.pm
+lib/Imager/Graph/StackedColumn.pm
+lib/Imager/Graph/Util.pm
+lib/Imager/Graph/Vertical.pm
+Makefile.PL
 MANIFEST
 MANIFEST.SKIP
-Makefile.PL
 README
-TODO
-lib/Imager/Graph/Pie.pm
-lib/Imager/Graph/Util.pm
 t/lib/Imager/Font/Test.pm
 t/t00load.t
 t/t10pie.t
+t/t11line.t
+t/t12column.t
+t/t13stacked_col.t
+t/t20api.t
+t/t21style_api.t
 t/t91pod.t
 t/t93podcover.t
 testimg/t10_hlegend.png
-testimg/t10_lin_fount.png       Test output comparison images
+testimg/t10_lin_fount.png	Test output comparison images
 testimg/t10_mono.png
 testimg/t10_noother.png
 testimg/t10_pie1.png
 testimg/t10_pie2.png
 testimg/t10_rad_fount.png
+TODO
 META.yml                                 Module meta-data (added by MakeMaker)
