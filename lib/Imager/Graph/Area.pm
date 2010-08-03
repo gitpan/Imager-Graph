@@ -1,17 +1,17 @@
-package Imager::Graph::Column;
+package Imager::Graph::Area;
 
 =head1 NAME
 
-  Imager::Graph::Column - a tool for drawing column charts on Imager images
+  Imager::Graph::Area - a tool for drawing area charts on Imager images
 
 =head1 SYNOPSIS
 
-  use Imager::Graph::Column;
+  use Imager::Graph::Area;
   use Imager::Font;
 
   my $font = Imager::Font->new(file => '/path/to/font.ttf') || die "Error: $!";
 
-  my $graph = Imager::Graph::Column->new();
+  my $graph = Imager::Graph::Area->new();
   $graph->set_image_width(900);
   $graph->set_image_height(600);
   $graph->set_font($font);
@@ -26,7 +26,8 @@ package Imager::Graph::Column;
 
   my $img = $graph->draw() || die $graph->error;
 
-  $img->write(file => 'columns.png');
+  $img->write(file => 'area.png');
+
 
 
 =cut
@@ -37,7 +38,7 @@ use Imager::Graph::Vertical;
 @ISA = qw(Imager::Graph::Vertical);
 
 sub _get_default_series_type {
-  return 'column';
+  return 'area';
 }
 
 1;

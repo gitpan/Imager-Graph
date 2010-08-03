@@ -11,6 +11,7 @@ Imager::Graph - Perl extension for producing Graphs using the Imager library.
   my $chart = Imager::Graph::Sub_class->new;
   my $img = $chart->draw(data=> \@data, ...)
     or die $chart->error;
+  $img->write(file => 'image.png');
 
 =head1 DESCRIPTION
 
@@ -28,7 +29,7 @@ use vars qw($VERSION);
 use Imager qw(:handy);
 use Imager::Fountain;
 
-$VERSION = '0.07';
+$VERSION = '0.08';
 
 # the maximum recursion depth in determining a color, fill or number
 use constant MAX_DEPTH => 10;
@@ -89,6 +90,9 @@ sub add_data_series {
   my $graph_data = $self->{'graph_data'} || [];
 
   push @$graph_data, { data => $data_ref, series_name => $series_name };
+  if (defined $series_name) {
+    push @{$self->{'labels'}}, $series_name;
+  }
 
   $self->{'graph_data'} = $graph_data;
   return;
@@ -614,14 +618,21 @@ sub set_data_line_colors {
 =head1 FEATURES
 
 Each graph type has a number of features.  These are used to add
-various items that are displayed in the graph area.  Some common
-methods are:
+various items that are displayed in the graph area.
+
+Features can be controlled by calling methods on the graph object, or
+by passing a C<features> parameter to draw().
+
+Some common features are:
 
 =over
 
 =item show_legend()
 
-adds a box containing boxes filled with the data filess, with
+Feature: legend
+X<legend><features, legend>
+
+adds a box containing boxes filled with the data fills, with
 the labels provided to the draw method.  The legend will only be
 displayed if both the legend feature is enabled and labels are
 supplied.
@@ -634,7 +645,12 @@ sub show_legend {
 
 =item show_outline()
 
-draws a border around the data areas.
+Feature: outline
+X<outline>X<features, outline>
+
+If enabled, draw a border around the elements representing data in the
+graph, eg. around each pie segments on a pie chart, around each bar on
+a bar chart.
 
 =cut
 
@@ -644,10 +660,18 @@ sub show_outline {
 
 =item show_labels()
 
+Feature: labels
+X<labels>X<features, labels>
+
 labels each data fill, usually by including text inside the data fill.
 If the text does not fit in the fill, they could be displayed in some
-other form, eg. as callouts in a pie graph.  There usually isn't much
-point in including both labels and a legend.
+other form, eg. as callouts in a pie graph.
+
+For pie charts there isn't much point in enabling both the C<legend>
+and C<labels> features.
+
+For other charts, the labels label the independent variable, while the
+legend describes the color used to plot the dependent variables.
 
 =cut
 
@@ -656,6 +680,9 @@ sub show_labels {
 }
 
 =item show_drop_shadow()
+
+Feature: dropshadow
+X<dropshadow>X<features, dropshadow>
 
 a simple drop shadow is shown behind some of the graph elements.
 
@@ -667,7 +694,11 @@ sub show_drop_shadow {
 
 =item reset_features()
 
-Unsets all of the features
+Unsets all of the features.
+
+Note: this disables all features, even those enabled by default for a
+style.  They can then be enabled by calling feature methods or by
+supplying a C<feature> parameter to the draw() method.
 
 =cut
 
@@ -678,27 +709,27 @@ sub reset_features {
 
 =back
 
-Additionally, features can be set by passing them into the draw() method:
+Additionally, features can be set by passing them into the draw()
+method, named as above:
 
 =over
 
-=item legend
+=item *
 
-adds a box containing boxes filled with the data filess, with
-the labels provided to the draw method.  The legend will only be
-displayed if both the legend feature is enabled and labels are
-supplied.
+if supplied as an array reference, then any element C<no>I<featurename> will
+disable that feature, while an element I<featurename> will enable it.
 
-=item labels
+=item *
 
-labels each data fill, usually by including text inside the data fill.
-If the text does not fit in the fill, they could be displayed in some
-other form, eg. as callouts in a pie graph.  There usually isn't much
-point in including both labels and a legend.
+if supplied as a scalar, it is treated as if it were a reference to
+an array containing only that scalar.
 
-=item dropshadow
+=item *
 
-a simple drop shadow is shown behind some of the graph elements.
+if supplied as a hash reference, then a C<reset> key with a true value
+will avoid inheriting any default features, a key I<feature> with a
+false value will disable that feature and a key I<feature> with a true
+value will enable that feature.
 
 =back
 
@@ -805,7 +836,7 @@ The background of the graph.
 
 Used to define basic background and foreground colors for the graph.
 The bg color may be used for the background of the graph, and is used
-as a default for the background of hatcheed fills.  The fg is used as
+as a default for the background of hatched fills.  The fg is used as
 the default for line and text colors.
 
 =item font
@@ -907,7 +938,7 @@ Defaults to 'right' and 'top'.
 
 =item padding
 
-the gap between the legend patches and text and the outside of it's
+the gap between the legend patches and text and the outside of its
 box, or to the legend border, if any.
 
 =item outsidepadding
@@ -1213,10 +1244,18 @@ my %style_defs =
                               coef=>[0.1, 0.2, 0.4, 0.6, 0.7, 0.9, 1.2, 
                                      0.9, 0.7, 0.6, 0.4, 0.2, 0.1 ] },
                  },
+   # controls the outline of graph elements representing data, eg. pie
+   # slices, bars or columns
    outline => {
                line =>'lookup(line)',
 	       lineaa => 'lookup(lineaa)',
               },
+   # controls the outline and background of the data area of the chart
+   graph =>
+   {
+    fill => "lookup(bg)",
+    outline => "lookup(fg)",
+   },
    size=>256,
    width=>'scale(1.5,size)',
    height=>'lookup(size)',
@@ -1227,6 +1266,15 @@ my %style_defs =
 	    aa => 'lookup(aa)',
 	   },
    lineaa => 'lookup(aa)',
+
+    line_markers =>[
+      { shape => 'circle',   radius => 4 },
+      { shape => 'square',   radius => 4 },
+      { shape => 'diamond',  radius => 4 },
+      { shape => 'triangle', radius => 4 },
+      { shape => 'x',        radius => 4 },
+      { shape => 'plus',     radius => 4 },
+    ],
   );
 
 =item _error($message)
@@ -1323,6 +1371,21 @@ my %styles =
            blur=>undef,
           },
     aa => 0,
+    line_markers =>
+    [
+     { shape => "x", radius => 4 },
+     { shape => "plus", radius => 4 },
+     { shape => "open_circle", radius => 4 },
+     { shape => "open_diamond", radius => 5 },
+     { shape => "open_square", radius => 4 },
+     { shape => "open_triangle", radius => 4 },
+     { shape => "x", radius => 8 },
+     { shape => "plus", radius => 8 },
+     { shape => "open_circle", radius => 8 },
+     { shape => "open_diamond", radius => 10 },
+     { shape => "open_square", radius => 8 },
+     { shape => "open_triangle", radius => 8 },
+    ],
    },
    fount_lin =>
    {
@@ -1361,14 +1424,6 @@ my %styles =
     ],
     colors  => [
      qw(FF0000 00FF00 0000FF C0C000 00C0C0 FF00FF)
-    ],
-    line_markers =>[
-      { shape => 'circle',   radius => 4 },
-      { shape => 'square',   radius => 4 },
-      { shape => 'diamond',  radius => 4 },
-      { shape => 'triangle', radius => 4 },
-      { shape => 'x',        radius => 4 },
-      { shape => 'plus',     radius => 4 },
     ],
     back=>{ fountain=>'linear',
             xa_ratio=>0, ya_ratio=>0,
@@ -1508,11 +1563,16 @@ $styles{'ocean_flat'} = {
 
 };
 
-
 =item $self->_style_setup(\%opts)
 
-Uses the values from %opts to build a customized hash describing the
-way the graph should be drawn.
+Uses the values from %opts, the custom style set by methods, the style
+set by the style parameter or the set_style() method and the built in
+chart defaults to build a working style.
+
+The working style features member is also populated with the active
+features for the chart.
+
+The working style is stored in the C<_style> member of $self.
 
 =cut
 
@@ -1555,14 +1615,20 @@ sub _style_setup {
   }
 
   # features are handled specially
-  $work{features} = {};
+  my %features;
+  $work{features} = \%features;
   for my $src (@search_list) {
     if ($src->{features}) {
       if (ref $src->{features}) {
         if (ref($src->{features}) =~ /ARRAY/) {
           # just set those features
           for my $feature (@{$src->{features}}) {
-            $work{features}{$feature} = 1;
+	    if ($feature =~ /^no(.+)$/) {
+	      delete $features{$1};
+	    }
+	    else {
+	      $features{$feature} = 1;
+	    }
           }
         }
         elsif (ref($src->{features}) =~ /HASH/) {
@@ -1575,12 +1641,15 @@ sub _style_setup {
       }
       else {
         # just set that single feature
-        $work{features}{$src->{features}} = 1;
+	if ($src->{features} =~ /^no(.+)$/) {
+	  delete $features{$1};
+	}
+	else {
+	  $features{$src->{features}} = 1;
+	}
       }
     }
   }
-  #use Data::Dumper;
-  #print Dumper(\%work);
 
   $self->{_style} = \%work;
 }
@@ -1847,7 +1916,7 @@ sub _data_color {
   return '000000';
 }
 
-=item _get_fill($index, $box)
+=item _get_fill($name, $box)
 
 Retrieves fill parameters for a named fill.
 
@@ -1871,6 +1940,67 @@ sub _get_fill {
   return $self->_translate_fill($what, $box, @depth);
 }
 
+=item _get_line($name)
+
+Return color (and possibly other) parameters for drawing a line with
+the _line() method.
+
+=cut
+
+sub _get_line {
+  my ($self, $name, @depth) = @_;
+
+  push (@depth, $name);
+  my $what;
+  if ($name =~ /^(\w+)\.(\w+)$/) {
+    $what = $self->{_style}{$1}{$2};
+  }
+  else {
+    $what = $self->{_style}{$name};
+  }
+
+  defined($what)
+    or return $self->_error("no line style $name found");
+
+  if (ref $what) {
+    if (eval { $what->isa("Imager::Color") }) {
+      return $what;
+    }
+    if (ref $what eq "HASH") {
+      # allow each kep to be looked up
+      my %work = %$what;
+
+      if ($work{color} =~ /^lookup\((.*)\)$/) {
+	$work{color} = $self->_get_color($1, @depth);
+      }
+      for my $key (keys %work) {
+	$key eq "color" and next;
+
+	if ($work{$key} =~ /^lookup\((.*)\)$/) {
+	  $work{$key} = $self->_get_thing($1);
+	}
+      }
+
+      return %work;
+    }
+    return ( color => Imager::Color->new(@$what) );
+  }
+  else {
+    if ($what =~ /^lookup\((\w+(?:\.\w+)?)\)$/) {
+      @depth < MAX_DEPTH
+	or return $self->_error("too many levels of recursion in lookup (@depth)");
+      return $self->_get_line($1, @depth);
+    }
+    else {
+      # presumably a text color
+      my $color = Imager::Color->new($what)
+	or return $self->_error("Could not translate $what as a color: ".Imager->errstr);
+
+      return ( color => $color );
+    }
+  }
+}
+
 =item _make_img()
 
 Builds the image object for the graph and fills it with the background
@@ -1887,19 +2017,19 @@ sub _make_img {
 
   $channels ||= 3;
 
-  my $img = Imager->new(xsize=>$width, ysize=>$height, channels=>$channels);
+  my $img = Imager->new(xsize=>$width, ysize=>$height, channels=>$channels)
+    or return $self->_error("Error creating image: " . Imager->errstr);
 
   $img->box($self->_get_fill('back', [ 0, 0, $width-1, $height-1]));
 
-  $img;
+  $self->{_image} = $img;
+
+  return $img;
 }
 
 sub _get_image {
   my $self = shift;
 
-  if (!$self->{'_image'}) {
-    $self->{'_image'} = $self->_make_img();
-  }
   return $self->{'_image'};
 }
 
@@ -2324,7 +2454,7 @@ should be merged instead of just being replaced.
 =cut
 
 sub _composite {
-  qw(title legend text label dropshadow outline callout);
+  qw(title legend text label dropshadow outline callout graph);
 }
 
 sub _filter_region {
@@ -2341,22 +2471,222 @@ sub _filter_region {
   $left > 0 or $left = 0;
   $top > 0 or $top = 0;
 
-  # newer versions of Imager let you work on just part of an image
-  if ($img->can('masked') && !$self->{_style}{features}{_debugblur}) {
-    my $masked = $img->masked(left=>$left, top=>$top,
-                              right=>$right, bottom=>$bottom);
-    $masked->filter(%$filter);
+  my $masked = $img->masked(left=>$left, top=>$top,
+			    right=>$right, bottom=>$bottom);
+  $masked->filter(%$filter);
+}
+
+=item _line(x1 => $x1, y1 => $y1, ..., style => $style)
+
+Wrapper for line drawing, implements styles Imager doesn't.
+
+Currently styles are limited to horizontal and vertical lines.
+
+=cut
+
+sub _line {
+  my ($self, %opts) = @_;
+
+  my $img = delete $opts{img}
+    or die "No img supplied to _line()";
+  my $style = delete $opts{style} || "solid";
+
+  if ($style eq "solid" || ($opts{x1} != $opts{x2} && $opts{y1} != $opts{y2})) {
+    return $img->line(%opts);
+  }
+  elsif ($style eq 'dashed' || $style eq 'dotted') {
+    my ($x1, $y1, $x2, $y2) = delete @opts{qw/x1 y1 x2 y2/};
+    # the line is vertical or horizontal, so swapping doesn't hurt
+    $x1 > $x2 and ($x1, $x2) = ($x2, $x1);
+    $y1 > $y2 and ($y1, $y2) = ($y2, $y1);
+    my ($stepx, $stepy) = ( 0, 0 );
+    my $step_size = $style eq "dashed" ? 8 : 2;
+    my ($counter, $count_end);
+    if ($x1 == $x2) {
+      $stepy = $step_size;
+      ($counter, $count_end) = ($y1, $y2);
+    }
+    else {
+      $stepx = $step_size;
+      ($counter, $count_end) = ($x1, $x2);
+    }
+    my ($x, $y) = ($x1, $y1);
+    while ($counter < $count_end) {
+      if ($style eq "dotted") {
+	$img->setpixel(x => $x, y => $y, color => $opts{color});
+      }
+      else {
+	my $xe = $stepx ? $x + $stepx / 2 - 1 : $x;
+	$xe > $x2 and $xe = $x2;
+	my $ye = $stepy ? $y + $stepy / 2 - 1 : $y;
+	$ye > $y2 and $ye = $y2;
+	$img->line(x1 => $x, y1 => $y, x2 => $xe, y2 => $ye, %opts);
+      }
+      $counter += $step_size;
+      $x += $stepx;
+      $y += $stepy;
+    }
+
+    return 1;
   }
   else {
-    # for older versions of Imager
-    my $subset = $img->crop(left=>$left, top=>$top,
-                            right=>$right, bottom=>$bottom);
-    $subset->filter(%$filter);
-    $img->paste(left=>$left, top=>$top, img=>$subset);
+    $self->_error("Unknown line style $style");
+    return;
+  }
+}
+
+=item _box(xmin ..., style => $style)
+
+A wrapper for drawing styled box outlines.
+
+=cut
+
+sub _box {
+  my ($self, %opts) = @_;
+
+  my $style = delete $opts{style} || "solid";
+  my $img = delete $opts{img}
+    or die "No img supplied to _box";
+
+  if ($style eq "solid") {
+    return $img->box(%opts);
+  }
+  else {
+    my $box = delete $opts{box};
+    # replicate Imager's defaults
+    my %work_opts = ( xmin => 0, ymin => 0, xmax => $img->getwidth() - 1, ymax => $img->getheight() -1, %opts, style => $style, img => $img );
+    my ($xmin, $ymin, $xmax, $ymax) = delete @work_opts{qw/xmin ymin xmax ymax/};
+    if ($box) {
+      ($xmin, $ymin, $xmax, $ymax) = @$box;
+    }
+    $xmin > $xmax and ($xmin, $xmax) = ($xmax, $xmin);
+    $ymin > $ymax and ($ymin, $ymax) = ($ymax, $ymin);
+
+    if ($xmax - $xmin > 1) {
+      $self->_line(x1 => $xmin+1, y1 => $ymin, x2 => $xmax-1, y2 => $ymin, %work_opts);
+      $self->_line(x1 => $xmin+1, y1 => $ymax, x2 => $xmax-1, y2 => $ymax, %work_opts);
+    }
+    $self->_line(x1 => $xmin, y1 => $ymin, x2 => $xmin, y2 => $ymax, %work_opts);
+    return $self->_line(x1 => $xmax, y1 => $ymin, x2 => $xmax, y2 => $ymax, %work_opts);
+  }
+}
+
+=item _feature_enabled($feature_name)
+
+Check if the given feature is enabled in the work style.
+
+=cut
+
+sub _feature_enabled {
+  my ($self, $name) = @_;
+
+  return $self->{_style}{features}{$name};
+}
+
+sub _line_marker {
+  my ($self, $index) = @_;
+
+  my $markers = $self->{'_style'}{'line_markers'};
+  if (!$markers) {
+    return;
+  }
+  my $marker = $markers->[$index % @$markers];
+
+  return $marker;
+}
+
+sub _draw_line_marker {
+  my $self = shift;
+  my ($x1, $y1, $series_counter) = @_;
+
+  my $img = $self->_get_image();
+
+  my $style = $self->_line_marker($series_counter);
+  return unless $style;
+
+  my $type = $style->{'shape'};
+  my $radius = $style->{'radius'};
+
+  my $line_aa = $self->_get_number("lineaa");
+  my $fill_aa = $self->_get_number("fill.aa");
+
+  if ($type eq 'circle') {
+    my @fill = $self->_data_fill($series_counter, [$x1 - $radius, $y1 - $radius, $x1 + $radius, $y1 + $radius]);
+    $img->circle(x => $x1, y => $y1, r => $radius, aa => $fill_aa, filled => 1, @fill);
+  }
+  elsif ($type eq 'open_circle') {
+    my $color = $self->_data_color($series_counter);
+    $img->circle(x => $x1, y => $y1, r => $radius, aa => $fill_aa, filled => 0, color => $color);
+  }
+  elsif ($type eq 'open_square') {
+    my $color = $self->_data_color($series_counter);
+    $img->box(xmin => $x1 - $radius, ymin => $y1 - $radius, xmax => $x1 + $radius, ymax => $y1 + $radius, filled => 0, color => $color);
+  }
+  elsif ($type eq 'open_triangle') {
+    my $color = $self->_data_color($series_counter);
+    $img->polyline(
+        points => [
+                    [$x1 - $radius, $y1 + $radius],
+                    [$x1 + $radius, $y1 + $radius],
+                    [$x1, $y1 - $radius],
+                    [$x1 - $radius, $y1 + $radius],
+                  ],
+        color => $color, aa => $line_aa);
+  }
+  elsif ($type eq 'open_diamond') {
+    my $color = $self->_data_color($series_counter);
+    $img->polyline(
+        points => [
+                    [$x1 - $radius, $y1],
+                    [$x1, $y1 + $radius],
+                    [$x1 + $radius, $y1],
+                    [$x1, $y1 - $radius],
+                    [$x1 - $radius, $y1],
+                  ],
+		  color => $color, aa => $line_aa);
+  }
+  elsif ($type eq 'square') {
+    my @fill = $self->_data_fill($series_counter, [$x1 - $radius, $y1 - $radius, $x1 + $radius, $y1 + $radius]);
+    $img->box(xmin => $x1 - $radius, ymin => $y1 - $radius, xmax => $x1 + $radius, ymax => $y1 + $radius, @fill);
+  }
+  elsif ($type eq 'diamond') {
+    # The gradient really doesn't work for diamond
+    my $color = $self->_data_color($series_counter);
+    $img->polygon(
+        points => [
+                    [$x1 - $radius, $y1],
+                    [$x1, $y1 + $radius],
+                    [$x1 + $radius, $y1],
+                    [$x1, $y1 - $radius],
+                  ],
+        filled => 1, color => $color, aa => $fill_aa);
+  }
+  elsif ($type eq 'triangle') {
+    # The gradient really doesn't work for triangle
+    my $color = $self->_data_color($series_counter);
+    $img->polygon(
+        points => [
+                    [$x1 - $radius, $y1 + $radius],
+                    [$x1 + $radius, $y1 + $radius],
+                    [$x1, $y1 - $radius],
+                  ],
+        filled => 1, color => $color, aa => $fill_aa);
+
+  }
+  elsif ($type eq 'x') {
+    my $color = $self->_data_color($series_counter);
+    $img->line(x1 => $x1 - $radius, y1 => $y1 -$radius, x2 => $x1 + $radius, y2 => $y1+$radius, aa => $line_aa, color => $color) || die $img->errstr;
+    $img->line(x1 => $x1 + $radius, y1 => $y1 -$radius, x2 => $x1 - $radius, y2 => $y1+$radius, aa => $line_aa, color => $color) || die $img->errstr;
+  }
+  elsif ($type eq 'plus') {
+    my $color = $self->_data_color($series_counter);
+    $img->line(x1 => $x1, y1 => $y1 -$radius, x2 => $x1, y2 => $y1+$radius, aa => $line_aa, color => $color) || die $img->errstr;
+    $img->line(x1 => $x1 + $radius, y1 => $y1, x2 => $x1 - $radius, y2 => $y1, aa => $line_aa, color => $color) || die $img->errstr;
   }
 }
 
 1;
+
 __END__
 
 =back

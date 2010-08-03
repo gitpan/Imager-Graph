@@ -1,5 +1,55 @@
 Revision history for Perl extension Imager::Graph.
 
+Imager-Graph 0.08 - 03 Aug 2010
+=================
+
+Now depends on Imager 0.75.
+
+More cool changes from Patrick Michaud:
+
+ - Area charts
+   https://rt.cpan.org/Ticket/Display.html?id=7
+
+Other changes:
+
+ - horizonal_gridlines (vertical charts) and vertical_gridlines
+   (horizontal charts) are now features and can be enabled like other
+   features (or disabled)
+
+ - hoisted the dashed-line drawing into Imager::Graph::_line() and
+   added a _get_line() method to retrieve line style information.
+
+ - features enabled earlier in the style list can now be disabled with
+   a feature "no{stylename}" when features are supplied as an arrayref
+   or scalar. eg. "nograph_outline".  If you supply features as a hashref
+   you can disable a feature with:
+     { stylename => 0 }
+
+ - for vertical and horizontal charts, allow the outline of the graph
+   area (graph_outline) to be disabled (with nograph_outline in
+   features.) or styled (graph.outline)
+
+ - for vertical and horizontal charts, allow the fill of the graph
+   area to be controlled separately from the base bg (graph.fill)
+
+ - tests
+
+Bug fixes:
+
+ - generate y-axis tic-label widths baed on the labels actually used.
+
+ - make draw() idempotent for vertical charts
+
+ - multiple calls to draw() no longer return the same image object
+
+ - labels supplied to draw() are now used for vertical and horizontal
+   charts
+
+ - Imager::Graph::Horizontal::add_column_data_series() renamed to
+   add_bar_data_series() and now adds the series as a "bar" series.
+   add_column_data_series() did nothing useful for a horizontal chart.
+
+
 Imager-Graph 0.07 - 21 May 2009
 =================
 

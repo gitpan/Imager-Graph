@@ -2,7 +2,35 @@ package Imager::Graph::Vertical;
 
 =head1 NAME
 
-  Imager::Graph::Vertical- A super class for line/bar/column charts
+Imager::Graph::Vertical- A super class for line/bar/column/area charts
+
+=head1 SYNOPSIS
+
+  use Imager::Graph::Vertical;
+
+  my $vert = Imager::Graph::Vertical->new;
+  $vert->add_column_data_series(\@data, "My data");
+  $vert->add_area_data_series(\@data2, "Area data");
+  $vert->add_stacked_column_data_series(\@data3, "stacked data");
+  $vert->add_line_data_series(\@data4, "line data");
+  my $img = $vert->draw();
+
+  use Imager::Graph::Column;
+  my $column = Imager::Graph::Column->new;
+  $column->add_data_series(\@data, "my data");
+  my $img = $column->draw();
+
+=head1 DESCRIPTION
+
+This is a base class that implements the functionality for column,
+stacked column, line and area charts where the dependent variable is
+represented in changes in the vertical position.
+
+The subclasses, L<Imager::Graph::Column>,
+L<Imager::Graph::StackedColumn>, L<Imager::Graph::Line> and
+L<Imager::Graph::Area> simply provide default data series types.
+
+=head1 METHODS
 
 =cut
 
@@ -10,13 +38,16 @@ use strict;
 use vars qw(@ISA);
 use Imager::Graph;
 @ISA = qw(Imager::Graph);
+use Imager::Fill;
 
 use constant STARTING_MIN_VALUE => 99999;
-=over 4
+
+=over
 
 =item add_data_series(\@data, $series_name)
 
-Add a data series to the graph, of the default type.
+Add a data series to the graph, of the default type.  This requires
+that the graph object be one of the derived graph classes.
 
 =cut
 
@@ -79,9 +110,26 @@ sub add_line_data_series {
   return;
 }
 
+=item add_area_data_series(\@data, $series_name)
+
+Add a area data series to the graph.
+
+=cut
+
+sub add_area_data_series {
+  my $self = shift;
+  my $data_ref = shift;
+  my $series_name = shift;
+
+  $self->_add_data_series('area', $data_ref, $series_name);
+
+  return;
+}
+
 =item set_y_max($value)
 
-Sets the maximum y value to be displayed.  This will be ignored if the y_max is lower than the highest value.
+Sets the maximum y value to be displayed.  This will be ignored if the
+y_max is lower than the highest value.
 
 =cut
 
@@ -91,7 +139,8 @@ sub set_y_max {
 
 =item set_y_min($value)
 
-Sets the minimum y value to be displayed.  This will be ignored if the y_min is higher than the lowest value.
+Sets the minimum y value to be displayed.  This will be ignored if the
+y_min is higher than the lowest value.
 
 =cut
 
@@ -101,7 +150,8 @@ sub set_y_min {
 
 =item set_column_padding($int)
 
-Sets the padding between columns.  This is a percentage of the column width.  Defaults to 0.
+Sets the padding between columns.  This is a percentage of the column
+width.  Defaults to 0.
 
 =cut
 
@@ -111,9 +161,13 @@ sub set_column_padding {
 
 =item set_range_padding($percentage)
 
-Sets the padding to be used, as a percentage.  For example, if your data ranges from 0 to 10, and you have a 20 percent padding, the y axis will go to 12.
+Sets the padding to be used, as a percentage.  For example, if your
+data ranges from 0 to 10, and you have a 20 percent padding, the y
+axis will go to 12.
 
-Defaults to 10.  This attribute is ignored for positive numbers if set_y_max() has been called, and ignored for negative numbers if set_y_min() has been called.
+Defaults to 10.  This attribute is ignored for positive numbers if
+set_y_max() has been called, and ignored for negative numbers if
+set_y_min() has been called.
 
 =cut
 
@@ -148,6 +202,9 @@ sub draw {
 
   my $style = $self->{_style};
 
+  $self->_make_img
+    or return;
+
   my $img = $self->_get_image()
     or return;
 
@@ -163,7 +220,7 @@ sub draw {
 
   # Scale the graph box down to the widest graph that can cleanly hold the # of columns.
   return unless $self->_get_data_range();
-  $self->_remove_tics_from_chart_box(\@chart_box);
+  $self->_remove_tics_from_chart_box(\@chart_box, \%opts);
   my $column_count = $self->_get_column_count();
 
   my $width = $self->_get_number('width');
@@ -172,38 +229,47 @@ sub draw {
   my $graph_width = $chart_box[2] - $chart_box[0];
   my $graph_height = $chart_box[3] - $chart_box[1];
 
-  my $col_width = int(($graph_width - 1) / $column_count) -1;
-  $graph_width = $col_width * $column_count + 1;
+  my $col_width = ($graph_width - 1) / $column_count;
+  if ($col_width > 1) {
+    $graph_width = int($col_width) * $column_count + 1;
+  }
+  else {
+    $graph_width = $col_width * $column_count + 1;
+  }
 
   my $tic_count = $self->_get_y_tics();
-  my $tic_distance = int(($graph_height-1) / ($tic_count - 1));
-  $graph_height = $tic_distance * ($tic_count - 1);
+  my $tic_distance = ($graph_height-1) / ($tic_count - 1);
+  $graph_height = int($tic_distance * ($tic_count - 1));
 
-  my $bottom = $chart_box[1];
-  my $left   = $chart_box[0];
+  my $top  = $chart_box[1];
+  my $left = $chart_box[0];
 
   $self->{'_style'}{'graph_width'} = $graph_width;
   $self->{'_style'}{'graph_height'} = $graph_height;
 
-  my @graph_box = ($left, $bottom, $left + $graph_width, $bottom + $graph_height);
+  my @graph_box = ($left, $top, $left + $graph_width, $top + $graph_height);
   $self->_set_graph_box(\@graph_box);
 
-  $img->box(
-            color   => $self->_get_color('outline.line'),
-            xmin    => $left,
-            xmax    => $left+$graph_width,
-            ymin    => $bottom,
-            ymax    => $bottom+$graph_height,
-            );
+  my @fill_box = ( $left, $top, $left+$graph_width, $top+$graph_height );
+  if ($self->_feature_enabled("graph_outline")) {
+    my @line = $self->_get_line("graph.outline")
+      or return;
+
+    $self->_box(
+		@line,
+		box => \@fill_box,
+		img => $img,
+	       );
+    ++$fill_box[0];
+    ++$fill_box[1];
+    --$fill_box[2];
+    --$fill_box[3];
+  }
 
   $img->box(
-            color   => $self->_get_color('bg'),
-            xmin    => $left + 1,
-            xmax    => $left+$graph_width - 1,
-            ymin    => $bottom + 1,
-            ymax    => $bottom+$graph_height-1 ,
-            filled  => 1,
-            );
+            $self->_get_fill('graph.fill'),
+	    box => \@fill_box,
+	   );
 
   my $min_value = $self->_get_min_value();
   my $max_value = $self->_get_max_value();
@@ -211,7 +277,7 @@ sub draw {
 
   my $zero_position;
   if ($value_range) {
-    $zero_position =  $bottom + $graph_height - (-1*$min_value / $value_range) * ($graph_height-1);
+    $zero_position =  $top + $graph_height - (-1*$min_value / $value_range) * ($graph_height-1);
   }
 
   if ($min_value < 0) {
@@ -220,7 +286,7 @@ sub draw {
             xmin    => $left + 1,
             xmax    => $left+$graph_width- 1,
             ymin    => $zero_position,
-            ymax    => $bottom+$graph_height - 1,
+            ymax    => $top+$graph_height - 1,
             filled  => 1,
     );
     $img->line(
@@ -232,6 +298,8 @@ sub draw {
     );
   }
 
+  $self->_reset_series_counter();
+
   if ($self->_get_data_series()->{'stacked_column'}) {
     return unless $self->_draw_stacked_columns();
   }
@@ -241,12 +309,15 @@ sub draw {
   if ($self->_get_data_series()->{'line'}) {
     return unless $self->_draw_lines();
   }
+  if ($self->_get_data_series()->{'area'}) {
+    return unless $self->_draw_area();
+  }
 
   if ($self->_get_y_tics()) {
     $self->_draw_y_tics();
   }
-  if ($self->_get_labels()) {
-    $self->_draw_x_tics();
+  if ($self->_get_labels(\%opts)) {
+    $self->_draw_x_tics(\%opts);
   }
 
   return $self->_get_image();
@@ -262,12 +333,13 @@ sub _get_data_range {
   my ($sc_min, $sc_max, $sc_cols) = $self->_get_stacked_column_range();
   my ($c_min, $c_max, $c_cols) = $self->_get_column_range();
   my ($l_min, $l_max, $l_cols) = $self->_get_line_range();
+  my ($a_min, $a_max, $a_cols) = $self->_get_area_range();
 
   # These are side by side...
   $sc_cols += $c_cols;
 
-  $min_value = $self->_min(STARTING_MIN_VALUE, $sc_min, $c_min, $l_min);
-  $max_value = $self->_max(0, $sc_max, $c_max, $l_max);
+  $min_value = $self->_min(STARTING_MIN_VALUE, $sc_min, $c_min, $l_min, $a_min);
+  $max_value = $self->_max(0, $sc_max, $c_max, $l_max, $a_max);
 
   my $config_min = $self->_get_number('y_min');
   my $config_max = $self->_get_number('y_max');
@@ -307,7 +379,7 @@ sub _get_data_range {
       $max_value += $difference;
     }
   }
-  $column_count = $self->_max(0, $sc_cols, $l_cols);
+  $column_count = $self->_max(0, $sc_cols, $l_cols, $a_cols);
 
   if ($self->_get_number('automatic_axis')) {
     # In case this was set via a style, and not by the api method
@@ -380,6 +452,33 @@ sub _get_line_range {
 
   return ($min_value, $max_value, $column_count);
 }
+
+sub _get_area_range {
+  my $self = shift;
+  my $series = $self->_get_data_series()->{'area'};
+  return (undef, undef, 0) unless $series;
+
+  my $max_value = 0;
+  my $min_value = STARTING_MIN_VALUE;
+  my $column_count = 0;
+
+  my @series = @{$series};
+  foreach my $series (@series) {
+    my @data = @{$series->{'data'}};
+
+    if (scalar @data > $column_count) {
+      $column_count = scalar @data;
+    }
+
+    foreach my $value (@data) {
+      if ($value > $max_value) { $max_value = $value; }
+      if ($value < $min_value) { $min_value = $value; }
+    }
+  }
+
+  return ($min_value, $max_value, $column_count);
+}
+
 
 sub _get_column_range {
   my $self = shift;
@@ -460,6 +559,9 @@ sub _draw_legend {
   if (my $series = $self->_get_data_series()->{'line'}) {
     push @labels, map { $_->{'series_name'} } @$series;
   }
+  if (my $series = $self->_get_data_series()->{'area'}) {
+    push @labels, map { $_->{'series_name'} } @$series;
+  }
 
   if ($style->{features}{legend} && (scalar @labels)) {
     $self->SUPER::_draw_legend($self->_get_image(), \@labels, $chart_box)
@@ -503,7 +605,6 @@ sub _draw_lines {
 
   my $zero_position =  $bottom + $graph_height - (-1*$min_value / $value_range) * ($graph_height - 1);
 
-
   my $line_aa = $self->_get_number("lineaa");
   foreach my $series (@$line_series) {
     my @data = @{$series->{'data'}};
@@ -539,9 +640,11 @@ sub _draw_lines {
 
     my $y2 = $bottom + ($value_range - $data[$data_size - 1] + $min_value)/$value_range * $graph_height;
 
-    push @marker_positions, [$x2, $y2];
-    foreach my $position (@marker_positions) {
-      $self->_draw_line_marker($position->[0], $position->[1], $series_counter);
+    if ($self->_feature_enabled("linemarkers")) {
+      push @marker_positions, [$x2, $y2];
+      foreach my $position (@marker_positions) {
+	$self->_draw_line_marker($position->[0], $position->[1], $series_counter);
+      }
     }
     $series_counter++;
   }
@@ -550,74 +653,111 @@ sub _draw_lines {
   return 1;
 }
 
-sub _line_marker {
-  my ($self, $index) = @_;
+sub _area_data_fill {
+  my ($self, $index, $box) = @_;
 
-  my $markers = $self->{'_style'}{'line_markers'};
-  if (!$markers) {
-    return;
+  my %fill = $self->_data_fill($index, $box);
+
+  my $opacity = $self->_get_number("area.opacity");
+  $opacity == 1
+    and return %fill;
+
+  my $orig_fill = $fill{fill};
+  unless ($orig_fill) {
+    $orig_fill = Imager::Fill->new
+      (
+       solid => $fill{color},
+       combine => "normal",
+      );
   }
-  my $marker = $markers->[$index % @$markers];
-
-  return $marker;
+  return
+    (
+     fill => Imager::Fill->new
+     (
+      type => "opacity",
+      other => $orig_fill,
+      opacity => $opacity,
+     ),
+    );
 }
 
-sub _draw_line_marker {
+sub _draw_area {
   my $self = shift;
-  my ($x1, $y1, $series_counter) = @_;
+  my $style = $self->{'_style'};
 
   my $img = $self->_get_image();
 
-  my $style = $self->_line_marker($series_counter);
-  return unless $style;
+  my $max_value = $self->_get_max_value();
+  my $min_value = $self->_get_min_value();
+  my $column_count = $self->_get_column_count();
 
-  my $type = $style->{'shape'};
-  my $radius = $style->{'radius'};
+  my $value_range = $max_value - $min_value;
+
+  my $width = $self->_get_number('width');
+  my $height = $self->_get_number('height');
+
+  my $graph_width = $self->_get_number('graph_width');
+  my $graph_height = $self->_get_number('graph_height');
+
+  my $area_series = $self->_get_data_series()->{'area'};
+  my $series_counter = $self->_get_series_counter() || 0;
+
+  my $col_width = int($graph_width / $column_count) -1;
+
+  my $graph_box = $self->_get_graph_box();
+  my $left = $graph_box->[0] + 1;
+  my $bottom = $graph_box->[1];
+  my $right = $graph_box->[2];
+  my $top = $graph_box->[3];
+
+  my $zero_position =  $bottom + $graph_height - (-1*$min_value / $value_range) * ($graph_height - 1);
 
   my $line_aa = $self->_get_number("lineaa");
-  my $fill_aa = $self->_get_number("fill.aa");
-  if ($type eq 'circle') {
-    my @fill = $self->_data_fill($series_counter, [$x1 - $radius, $y1 - $radius, $x1 + $radius, $y1 + $radius]);
-    $img->circle(x => $x1, y => $y1, r => $radius, aa => $fill_aa, filled => 1, @fill);
-  }
-  elsif ($type eq 'square') {
-    my @fill = $self->_data_fill($series_counter, [$x1 - $radius, $y1 - $radius, $x1 + $radius, $y1 + $radius]);
-    $img->box(xmin => $x1 - $radius, ymin => $y1 - $radius, xmax => $x1 + $radius, ymax => $y1 + $radius, @fill);
-  }
-  elsif ($type eq 'diamond') {
-    # The gradient really doesn't work for diamond
-    my $color = $self->_data_color($series_counter);
-    $img->polygon(
-        points => [
-                    [$x1 - $radius, $y1],
-                    [$x1, $y1 + $radius],
-                    [$x1 + $radius, $y1],
-                    [$x1, $y1 - $radius],
-                  ],
-        filled => 1, color => $color, aa => $fill_aa);
-  }
-  elsif ($type eq 'triangle') {
-    # The gradient really doesn't work for triangle
-    my $color = $self->_data_color($series_counter);
-    $img->polygon(
-        points => [
-                    [$x1 - $radius, $y1 + $radius],
-                    [$x1 + $radius, $y1 + $radius],
-                    [$x1, $y1 - $radius],
-                  ],
-        filled => 1, color => $color, aa => $fill_aa);
+  foreach my $series (@$area_series) {
+    my @data = @{$series->{'data'}};
+    my $data_size = scalar @data;
 
-  }
-  elsif ($type eq 'x') {
+    my $interval = $graph_width / ($data_size - 1);
+
     my $color = $self->_data_color($series_counter);
-    $img->line(x1 => $x1 - $radius, y1 => $y1 -$radius, x2 => $x1 + $radius, y2 => $y1+$radius, aa => $line_aa, color => $color) || die $img->errstr;
-    $img->line(x1 => $x1 + $radius, y1 => $y1 -$radius, x2 => $x1 - $radius, y2 => $y1+$radius, aa => $line_aa, color => $color) || die $img->errstr;
+
+    # We need to add these last, otherwise the next line segment will overwrite half of the marker
+    my @marker_positions;
+    my @polygon_points;
+    for (my $i = 0; $i < $data_size - 1; $i++) {
+      my $x1 = $left + $i * $interval;
+
+      my $y1 = $bottom + ($value_range - $data[$i] + $min_value)/$value_range * $graph_height;
+
+      if ($i == 0) {
+        push @polygon_points, [$x1, $top];
+      }
+      push @polygon_points, [$x1, $y1];
+
+      push @marker_positions, [$x1, $y1];
+    }
+
+    my $x2 = $left + ($data_size - 1) * $interval;
+
+    my $y2 = $bottom + ($value_range - $data[$data_size - 1] + $min_value)/$value_range * $graph_height;
+    push @polygon_points, [$x2, $y2];
+    push @polygon_points, [$x2, $top];
+    push @polygon_points, $polygon_points[0];
+
+    my @fill = $self->_area_data_fill($series_counter, [$left, $bottom, $right, $top]);
+    $img->polygon(points => [@polygon_points], @fill);
+
+    if ($self->_feature_enabled("areamarkers")) {
+      push @marker_positions, [$x2, $y2];
+      foreach my $position (@marker_positions) {
+	$self->_draw_line_marker($position->[0], $position->[1], $series_counter);
+      }
+    }
+    $series_counter++;
   }
-  elsif ($type eq 'plus') {
-    my $color = $self->_data_color($series_counter);
-    $img->line(x1 => $x1, y1 => $y1 -$radius, x2 => $x1, y2 => $y1+$radius, aa => $line_aa, color => $color) || die $img->errstr;
-    $img->line(x1 => $x1 + $radius, y1 => $y1, x2 => $x1 - $radius, y2 => $y1, aa => $line_aa, color => $color) || die $img->errstr;
-  }
+
+  $self->_set_series_counter($series_counter);
+  return 1;
 }
 
 sub _draw_columns {
@@ -644,7 +784,7 @@ sub _draw_columns {
   my $bottom = $graph_box->[1];
   my $zero_position =  int($bottom + $graph_height - (-1*$min_value / $value_range) * ($graph_height -1));
 
-  my $bar_width = int($graph_width / $column_count - 1);
+  my $bar_width = $graph_width / $column_count;
 
   my $outline_color;
   if ($style->{'features'}{'outline'}) {
@@ -667,11 +807,19 @@ sub _draw_columns {
     my @data = @{$series->{'data'}};
     my $data_size = scalar @data;
     for (my $i = 0; $i < $data_size; $i++) {
-      my $x1 = int($left + $bar_width * (scalar @$col_series * $i + $series_pos)) + scalar @$col_series * $i + $series_pos + ($column_padding / 2);
+      my $part1 = $bar_width * (scalar @$col_series * $i);
+      my $part2 = ($series_pos) * $bar_width;
+      my $x1 = $left + $part1 + $part2;
       if ($has_stacked_columns) {
-        $x1 += ($i + 1) * $bar_width + $i + 1;
+        $x1 += ($bar_width * ($i+1));
       }
-      my $x2 = $x1 + $bar_width - $column_padding;
+      $x1 = int($x1);
+
+      my $x2 = int($x1 + $bar_width - $column_padding)-1;
+      # Special case for when bar_width is less than 1.
+      if ($x2 < $x1) {
+        $x2 = $x1;
+      }
 
       my $y1 = int($bottom + ($value_range - $data[$i] + $min_value)/$value_range * $graph_height);
 
@@ -718,7 +866,7 @@ sub _draw_stacked_columns {
   my $graph_width = $self->_get_number('graph_width');
   my $graph_height = $self->_get_number('graph_height');
 
-  my $bar_width = int($graph_width / $column_count -1);
+  my $bar_width = $graph_width / $column_count;
   my $column_series = 0;
   if (my $column_series_data = $self->_get_data_series()->{'column'}) {
     $column_series = (scalar @$column_series_data);
@@ -747,8 +895,14 @@ sub _draw_stacked_columns {
     my @data = @{$series->{'data'}};
     my $data_size = scalar @data;
     for (my $i = 0; $i < $data_size; $i++) {
-      my $x1 = int($left + $bar_width * ($column_series * $i)) + $column_series * $i + ($column_padding / 2);
-      my $x2 = $x1 + $bar_width - $column_padding;
+      my $part1 = $bar_width * $i * $column_series;
+      my $part2 = 0;
+      my $x1 = int($left + $part1 + $part2);
+      my $x2 = int($x1 + $bar_width - $column_padding) - 1;
+      # Special case for when bar_width is less than 1.
+      if ($x2 < $x1) {
+        $x2 = $x1;
+      }
 
       my $y1 = int($bottom + ($value_range - $data[$i] + $min_value)/$value_range * $graph_height);
 
@@ -792,21 +946,170 @@ sub _add_data_series {
   return;
 }
 
+=back
+
+=head1 FEATURES
+
 =over
 
 =item show_horizontal_gridlines()
 
-Shows horizontal gridlines at the y-tics.
+Feature: horizontal_gridlines
+X<horizontal_gridlines>X<features, horizontal_gridlines>
+
+Enables the C<horizontal_gridlines> feature, which shows horizontal
+gridlines at the y-tics.
+
+The style of the gridlines can be controlled with the
+set_horizontal_gridline_style() method (or by setting the hgrid
+style).
 
 =cut
 
 sub show_horizontal_gridlines {
-    $_[0]->{'custom_style'}->{'horizontal_gridlines'} = 1;
+    $_[0]->{'custom_style'}{features}{'horizontal_gridlines'} = 1;
+}
+
+=item set_horizontal_gridline_style(style => $style, color => $color)
+
+Style: hgrid.
+X<hgrid>X<style parameters, hgrid>
+
+Set the style and color of horizonal gridlines.
+
+See: L<Imager::Graph/"Line styles">
+
+=cut
+
+sub set_horizontal_gridline_style {
+  my ($self, %opts) = @_;
+
+  $self->{custom_style}{hgrid} ||= {};
+  @{$self->{custom_style}{hgrid}}{keys %opts} = values %opts;
+
+  return 1;
+}
+
+=item show_graph_outline($flag)
+
+Feature: graph_outline
+X<graph_outline>X<features, graph_outline>
+
+If no flag is supplied, unconditionally enable the graph outline.
+
+If $flag is supplied, enable/disable the graph_outline feature based
+on that.
+
+Enabled by default.
+
+=cut
+
+sub show_graph_outline {
+  my ($self, $flag) = @_;
+
+  @_ == 1 and $flag = 1;
+
+  $self->{custom_style}{features}{graph_outline} = $flag;
+
+  return 1;
+}
+
+=item set_graph_outline_style(color => ...)
+
+=item set_graph_outline_style(style => ..., color => ...)
+
+Style: graph.outline
+X<graph.outline>X<style parameters, graph.outline>
+
+Sets the style of the graph outline.
+
+Default: the style C<fg>.
+
+=cut
+
+sub set_graph_outline_style {
+  my ($self, %opts) = @_;
+
+  $self->{custom_style}{graph}{outline} = \%opts;
+
+  return 1;
+}
+
+=item set_graph_fill_style(I<fill parameters>)
+
+Style: graph.fill
+X<graph.fill>X<style parameters, graph.fill>
+
+Set the fill used to fill the graph data area.
+
+Default: the style C<bg>.
+
+eg.
+
+  $graph->set_graph_fill_style(solid => "FF000020", combine => "normal");
+
+=cut
+
+sub set_graph_fill_style {
+  my ($self, %opts) = @_;
+
+  $self->{custom_style}{graph}{fill} = \%opts;
+
+  return 1;
+}
+
+=item show_area_markers()
+
+=item show_area_markers($value)
+
+Feature: areamarkers.
+
+If $value is missing or true, draw markers along the top of area data
+series.
+
+eg.
+
+  $chart->show_area_markers();
+
+=cut
+
+sub show_area_markers {
+  my ($self, $value) = @_;
+
+  @_ > 1 or $value = 1;
+
+  $self->{custom_style}{features}{areamarkers} = $value;
+
+  return 1;
+}
+
+=item show_line_markers()
+
+=item show_line_markers($value)
+
+Feature: linemarkers.
+
+If $value is missing or true, draw markers on a line data series.
+
+Note: line markers are drawn by default.
+
+=cut
+
+sub show_line_markers {
+  my ($self, $value) = @_;
+
+  @_ > 1 or $value = 1;
+
+  $self->{custom_style}{features}{linemarkers} = $value;
+
+  return 1;
 }
 
 =item use_automatic_axis()
 
-Automatically scale the Y axis, based on L<Chart::Math::Axis>.  If Chart::Math::Axis isn't installed, this sets an error and returns undef.  Returns 1 if it is installed.
+Automatically scale the Y axis, based on L<Chart::Math::Axis>.  If
+Chart::Math::Axis isn't installed, this sets an error and returns
+undef.  Returns 1 if it is installed.
 
 =cut
 
@@ -819,10 +1122,10 @@ sub use_automatic_axis {
   return 1;
 }
 
-
 =item set_y_tics($count)
 
-Set the number of Y tics to use.  Their value and position will be determined by the data range.
+Set the number of Y tics to use.  Their value and position will be
+determined by the data range.
 
 =cut
 
@@ -835,15 +1138,14 @@ sub _get_y_tics {
 }
 
 sub _remove_tics_from_chart_box {
-  my $self = shift;
-  my $chart_box = shift;
+  my ($self, $chart_box, $opts) = @_;
 
   # XXX - bad default
   my $tic_width = $self->_get_y_tic_width() || 10;
   my @y_tic_box = ($chart_box->[0], $chart_box->[1], $chart_box->[0] + $tic_width, $chart_box->[3]);
 
   # XXX - bad default
-  my $tic_height = $self->_get_x_tic_height() || 10;
+  my $tic_height = $self->_get_x_tic_height($opts) || 10;
   my @x_tic_box = ($chart_box->[0], $chart_box->[3] - $tic_height, $chart_box->[2], $chart_box->[3]);
 
   $self->_remove_box($chart_box, \@y_tic_box);
@@ -853,9 +1155,30 @@ sub _remove_tics_from_chart_box {
   my @y_tic_tops = ($chart_box->[0], $chart_box->[1], $chart_box->[2], $chart_box->[1] + int($tic_height / 2));
   $self->_remove_box($chart_box, \@y_tic_tops);
 
+  # Make sure that the first and last label fit
+  if (my $labels = $self->_get_labels($opts)) {
+    if (my @box = $self->_text_bbox($labels->[0], 'legend')) {
+      my @remove_box = ($chart_box->[0],
+                        $chart_box->[1],
+                        $chart_box->[0] + int($box[2] / 2) + 1,
+                        $chart_box->[3]
+                        );
+
+      $self->_remove_box($chart_box, \@remove_box);
+    }
+    if (my @box = $self->_text_bbox($labels->[-1], 'legend')) {
+      my @remove_box = ($chart_box->[2] - int($box[2] / 2) - 1,
+                        $chart_box->[1],
+                        $chart_box->[2],
+                        $chart_box->[3]
+                        );
+
+      $self->_remove_box($chart_box, \@remove_box);
+    }
+  }
 }
 
-sub _get_y_tic_width{
+sub _get_y_tic_width {
   my $self = shift;
   my $min = $self->_get_min_value();
   my $max = $self->_get_max_value();
@@ -868,8 +1191,11 @@ sub _get_y_tic_width{
 
   my $max_width = 0;
   for my $count (0 .. $tic_count - 1) {
-    my $value = sprintf("%.2f", ($count*$interval)+$min);
+    my $value = ($count*$interval)+$min;
 
+    if ($interval < 1 || ($value != int($value))) {
+      $value = sprintf("%.2f", $value);
+    }
     my @box = $self->_text_bbox($value, 'legend');
     my $width = $box[2] - $box[0];
 
@@ -884,9 +1210,9 @@ sub _get_y_tic_width{
 }
 
 sub _get_x_tic_height {
-  my $self = shift;
+  my ($self, $opts) = @_;
 
-  my $labels = $self->_get_labels();
+  my $labels = $self->_get_labels($opts);
 
   if (!$labels) {
         return;
@@ -930,12 +1256,14 @@ sub _draw_y_tics {
   my %text_info = $self->_text_style('legend')
     or return;
 
-  my $show_gridlines = $self->_get_number('horizontal_gridlines');
-  my $tic_distance = int(($graph_box->[3] - $graph_box->[1]) / ($tic_count - 1));
+  my $line_style = $self->_get_color('outline.line');
+  my $show_gridlines = $self->{_style}{features}{'horizontal_gridlines'};
+  my @grid_line = $self->_get_line("hgrid");
+  my $tic_distance = ($graph_box->[3] - $graph_box->[1]) / ($tic_count - 1);
   for my $count (0 .. $tic_count - 1) {
     my $x1 = $graph_box->[0] - 5;
     my $x2 = $graph_box->[0] + 5;
-    my $y1 = $graph_box->[3] - ($count * $tic_distance);
+    my $y1 = int($graph_box->[3] - ($count * $tic_distance));
 
     my $value = ($count*$interval)+$min;
     if ($interval < 1 || ($value != int($value))) {
@@ -945,7 +1273,7 @@ sub _draw_y_tics {
     my @box = $self->_text_bbox($value, 'legend')
       or return;
 
-    $img->line(x1 => $x1, x2 => $x2, y1 => $y1, y2 => $y1, aa => 1, color => '000000');
+    $img->line(x1 => $x1, x2 => $x2, y1 => $y1, y2 => $y1, aa => 1, color => $line_style);
 
     my $width = $box[2];
     my $height = $box[3];
@@ -956,27 +1284,24 @@ sub _draw_y_tics {
                  text => $value
                 );
 
-    if ($show_gridlines) {
-      # XXX - line styles!
-      for (my $i = $graph_box->[0]; $i < $graph_box->[2]; $i += 6) {
-        my $x1 = $i;
-        my $x2 = $i + 2;
-        if ($x2 > $graph_box->[2]) { $x2 = $graph_box->[2]; }
-        $img->line(x1 => $x1, x2 => $x2, y1 => $y1, y2 => $y1, aa => 1, color => '000000');
-      }
+    if ($show_gridlines && $y1 != $graph_box->[1] && $y1 != $graph_box->[3]) {
+      $self->_line(x1 => $graph_box->[0], y1 => $y1,
+		   x2 => $graph_box->[2], y2 => $y1,
+		   img => $img,
+		   @grid_line);
     }
   }
 
 }
 
 sub _draw_x_tics {
-  my $self = shift;
+  my ($self, $opts) = @_;
 
   my $img = $self->_get_image();
   my $graph_box = $self->_get_graph_box();
   my $image_box = $self->_get_image_box();
 
-  my $labels = $self->_get_labels();
+  my $labels = $self->_get_labels($opts);
 
   my $tic_count = (scalar @$labels) - 1;
 
@@ -991,17 +1316,40 @@ sub _draw_x_tics {
   my %text_info = $self->_text_style('legend')
     or return;
 
+  # If automatic axis is turned on, let's be selective about what labels we draw.
+  my $max_size = 0;
+  my $tic_skip = 0;
+  if ($self->_get_number('automatic_axis')) {
+    foreach my $label (@$labels) {
+      my @box = $self->_text_bbox($label, 'legend');
+      if ($box[2] > $max_size) {
+        $max_size = $box[2];
+      }
+    }
+
+    # Give the max_size some padding...
+    $max_size *= 1.2;
+
+    $tic_skip = int($max_size / $tic_distance) + 1;
+  }
+
+  my $line_style = $self->_get_color('outline.line');
+
   for my $count (0 .. $tic_count) {
+    next if ($count % ($tic_skip + 1));
     my $label = $labels->[$count];
     my $x1 = $graph_box->[0] + ($tic_distance * $count);
 
     if ($has_columns) {
       $x1 += $tic_distance / 2;
     }
+
+    $x1 = int($x1);
+
     my $y1 = $graph_box->[3] + 5;
     my $y2 = $graph_box->[3] - 5;
 
-    $img->line(x1 => $x1, x2 => $x1, y1 => $y1, y2 => $y2, aa => 1, color => '000000');
+    $img->line(x1 => $x1, x2 => $x1, y1 => $y1, y2 => $y2, aa => 1, color => $line_style);
 
     my @box = $self->_text_bbox($label, 'legend')
       or return;
@@ -1050,6 +1398,30 @@ sub _get_min_value      { return $_[0]->{'min_value'} }
 sub _get_max_value      { return $_[0]->{'max_value'} }
 sub _get_image_box      { return $_[0]->{'image_box'} }
 sub _get_graph_box      { return $_[0]->{'graph_box'} }
+sub _reset_series_counter { $_[0]->{series_counter} = 0 }
 sub _get_series_counter { return $_[0]->{'series_counter'} }
+
+sub _style_defs {
+  my ($self) = @_;
+
+  my %work = %{$self->SUPER::_style_defs()};
+  $work{area} =
+    {
+     opacity => 0.5,
+    };
+  push @{$work{features}}, qw/graph_outline graph_fill linemarkers/;
+  $work{hgrid} =
+    {
+     color => "lookup(fg)",
+     style => "solid",
+    };
+
+  return \%work;
+}
+
+sub _composite {
+  my ($self) = @_;
+  return ( $self->SUPER::_composite(), "graph", "hgrid" );
+}
 
 1;
