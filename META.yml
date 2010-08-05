@@ -1,6 +1,6 @@
 --- #YAML:1.0
 name:               Imager-Graph
-version:            0.08
+version:            0.09
 abstract:           Draws good looking pie graphs
 author:
     - Tony Cook <tony@develop-help.com>
