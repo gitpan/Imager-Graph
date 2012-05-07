@@ -5,6 +5,7 @@ use lib 't/lib';
 use Imager::Font::Test;
 use Test::More;
 use Imager::Test qw(is_image_similar);
+use Imager::Graph::Test qw(cmpimg);
 
 -d 'testout' 
   or mkdir "testout", 0700 
@@ -68,7 +69,7 @@ plan tests => 8;
   ok($img1->write(file => "testout/t40area1.ppm"),
      "save to testout");
 
-  cmpimg($img1, "testimg/t40area1.png");
+  cmpimg($img1, "testimg/t40area1.png", 100_000);
 }
 
 {
@@ -92,7 +93,7 @@ plan tests => 8;
   ok($img2->write(file => "testout/t40area2.ppm"),
      "save to file");
 
-  cmpimg($img2, "testimg/t40area2.png");
+  cmpimg($img2, "testimg/t40area2.png", 80_000);
 }
 
 END {
@@ -102,20 +103,3 @@ END {
   }
 }
 
-sub cmpimg {
-  my ($img, $file, $limit) = @_;
-
-  $limit ||= 10000;
-
- SKIP:
-  {
-    $Imager::formats{png}
-      or skip("No PNG support", 1);
-
-    my $cmpimg = Imager->new;
-    $cmpimg->read(file=>$file)
-      or return ok(0, "Cannot read $file: ".$cmpimg->errstr);
-    my $diff = Imager::i_img_diff($img->{IMG}, $cmpimg->{IMG});
-    is_image_similar($img, $cmpimg, $limit, "Comparison to $file ($diff)");
-  }
-}

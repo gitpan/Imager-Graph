@@ -1,5 +1,5 @@
 package Imager::Graph;
-require 5.005;
+require 5.006;
 
 =head1 NAME
 
@@ -29,7 +29,7 @@ use vars qw($VERSION);
 use Imager qw(:handy);
 use Imager::Fountain;
 
-$VERSION = '0.09';
+$VERSION = '0.10';
 
 # the maximum recursion depth in determining a color, fill or number
 use constant MAX_DEPTH => 10;

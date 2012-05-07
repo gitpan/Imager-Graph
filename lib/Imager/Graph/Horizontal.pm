@@ -13,6 +13,8 @@ use Imager::Graph;
 
 use constant STARTING_MIN_VALUE => 99999;
 
+our $VERSION = "0.10";
+
 =over 4
 
 =item add_data_series(\@data, $series_name)
@@ -76,7 +78,7 @@ sub set_column_padding {
 
 =item set_negative_background($color)
 
-Sets the background color used below the x axis.
+Sets the background color or fill used below the y axis.
 
 =cut
 
@@ -167,10 +169,14 @@ sub draw {
     --$fill_box[3];
   }
 
-  $img->box(
-	    $self->_get_fill("graph.fill"),
-	    box => \@fill_box,
-	   );
+  {
+    my @back_fill = $self->_get_fill("graph.fill", \@fill_box)
+      or return;
+    $img->box(
+	      @back_fill,
+	      box => \@fill_box,
+	     );
+  }
 
   my $min_value = $self->_get_min_value();
   my $max_value = $self->_get_max_value();
@@ -178,17 +184,17 @@ sub draw {
 
   my $zero_position;
   if ($value_range) {
-    $zero_position =  $left + $graph_width + (-1*$min_value / $value_range) * ($graph_width-1);
+    $zero_position =  $left + (-1*$min_value / $value_range) * ($graph_width-1);
   }
 
   if ($min_value < 0) {
+    my @neg_box = ( $left+1, $top+1, $zero_position, $top+$graph_height - 1 );
+    my @neg_fill = $self->_get_fill('negative_bg', \@neg_box)
+      or return;
+
     $img->box(
-            color   => $self->_get_color('negative_bg'),
-            xmin    => $left+1,
-            xmax    => $zero_position,
-            ymin    => $top+1,
-            ymax    => $top+$graph_height - 1,
-            filled  => 1,
+	      @neg_fill,
+	      box => \@neg_box,
     );
     $img->line(
             x1 => $zero_position,

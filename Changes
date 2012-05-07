@@ -1,5 +1,29 @@
 Revision history for Perl extension Imager::Graph.
 
+Imager-Graph 0.10 - 7 May 2012
+=================
+
+ - loosen up image comparisons - the rounding change in Imager 0.90
+   made small changes to many pixels in fountain fills
+   https://rt.cpan.org/Ticket/Display.html?id=76955
+   It should fix the following too.
+   https://rt.cpan.org/Ticket/Display.html?id=68031
+
+ - negative_bg (or set via set_negative_background()) can now be a
+   fill.
+   https://rt.cpan.org/Ticket/Display.html?id=59532
+
+ - calculation of the zero position for horizontal charts was broken,
+   this resulted charts with negative data values having the
+   negative_bg color filled from the left side of the chart off the
+   right side of the image.
+
+ - Imager::Graph now requires at least perl 5.6.
+
+ - hoisted the common cmpimg() function into a separate test module
+
+ - convert shipped comparison images from ppm to png to reduce size
+
 Imager-Graph 0.09 - 05 Aug 2010
 =================
 

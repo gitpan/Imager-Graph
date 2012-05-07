@@ -40,6 +40,8 @@ use Imager::Graph;
 @ISA = qw(Imager::Graph);
 use Imager::Fill;
 
+our $VERSION = "0.10";
+
 use constant STARTING_MIN_VALUE => 99999;
 
 =over
@@ -177,7 +179,7 @@ sub set_range_padding {
 
 =item set_negative_background($color)
 
-Sets the background color used below the x axis.
+Sets the background color or fill used below the x axis.
 
 =cut
 
@@ -281,13 +283,12 @@ sub draw {
   }
 
   if ($min_value < 0) {
+    my @neg_box = ( $left + 1, $zero_position, $left+$graph_width- 1, $top+$graph_height - 1 );
+    my @neg_fill = $self->_get_fill('negative_bg', \@neg_box)
+      or return;
     $img->box(
-            color   => $self->_get_color('negative_bg'),
-            xmin    => $left + 1,
-            xmax    => $left+$graph_width- 1,
-            ymin    => $zero_position,
-            ymax    => $top+$graph_height - 1,
-            filled  => 1,
+	      @neg_fill,
+	      box => \@neg_box,
     );
     $img->line(
             x1 => $left+1,
