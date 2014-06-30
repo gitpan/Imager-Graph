@@ -50,4 +50,5 @@ testimg/t34_points.png
 testimg/t40area1.png
 testimg/t40area2.png
 TODO
-META.yml                                 Module meta-data (added by MakeMaker)
+META.yml                                 Module YAML meta-data (added by MakeMaker)
+META.json                                Module JSON meta-data (added by MakeMaker)

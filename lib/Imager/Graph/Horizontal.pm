@@ -4,6 +4,14 @@ package Imager::Graph::Horizontal;
 
   Imager::Graph::Horizontal - A super class for line/bar charts
 
+=head1 DESCRIPTION
+
+This is a base class that implements base functionality for line and
+bar charts.
+
+The sub-classes, Imager::Graph::Bar and Imager::Graph::Line simply
+provide default data series types.
+
 =cut
 
 use strict;
@@ -13,9 +21,11 @@ use Imager::Graph;
 
 use constant STARTING_MIN_VALUE => 99999;
 
-our $VERSION = "0.10";
+our $VERSION = "0.11";
 
-=over 4
+=head1 METHODS
+
+=over
 
 =item add_data_series(\@data, $series_name)
 
@@ -580,8 +590,6 @@ sub _add_data_series {
   return;
 }
 
-=over
-
 =item show_vertical_gridlines()
 
 Shows vertical gridlines at the y-tics.
@@ -908,3 +916,10 @@ sub _composite {
 
 1;
 
+=back
+
+=head1 AUTHOR
+
+Patrick Michaud, Tony Cook
+
+=cut
